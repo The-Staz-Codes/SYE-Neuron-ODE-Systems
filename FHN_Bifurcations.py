@@ -208,11 +208,11 @@ for I in np.arange(-7.5, 5.5, 0.01):
         else:
             Hopf_bifurcations.append(0)
 
-        # Determine classification
-        classification_value = classify_phase_portrait(J)
+    # Determine classification
+    classification_value = classify_phase_portrait(J)
 
-        # Record each classification
-        classifications.append(classification_value)
+    # Record each classification
+    classifications.append(classification_value)
 
 # Look for bifurcation points by comparing the values in the classification list and Hopf bifurcation list
 for i in range(1, len(classifications)):
