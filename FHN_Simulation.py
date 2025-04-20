@@ -36,7 +36,7 @@ def fixed_point_equations(vars, I, alpha, beta):
     dydt = -x + alpha - beta * y
     return [dxdt, dydt]
 
-# Define function to obtain fixed point(s) to linearize about
+# Define function to obtain fixed point to linearize about
 def find_fixed_points(I, alpha, beta):
     guesses = [[-2, -2], [-1, -1], [0, 0], [1, 1], [2, 2]]
     fixed_points = []
