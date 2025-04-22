@@ -1,0 +1,177 @@
+---
+title: "FHN_Analysis"
+format: html
+editor: visual
+---
+
+## Set-up
+```{r}
+# Clear the environment
+rm(list = ls())
+
+# Load in packages
+library(tidyverse)
+library(here)
+library(mgcv)
+
+# Load in the dataset
+FHN <- read.csv(here("FHN_bifurcation_data.csv"))
+```
+
+## Exploratory plots
+```{r}
+# Create a distribution of the first Hopf-bifurcation
+ggplot(FHN, aes(first_hopf_bifurcation)) +
+  geom_histogram(color = "grey", fill = "orange") +
+  labs(
+    title = "Histogram of First Hopf Bifurcation",
+    x = "External Current",
+    y = "Count"
+  ) +
+  theme_bw()
+
+# Create a distribution of the second bifurcation
+ggplot(FHN, aes(first_hopf_bifurcation)) +
+  geom_histogram(color = "grey", fill = "lightblue") +
+  labs(
+    title = "Histogram of Second Bifurcation",
+    x = "External Current",
+    y = "Count"
+  ) +
+  theme_bw()
+```
+
+```{r}
+# Create side-by-side boxplots to investigate if the first Hopf bifurcation and second bifurcation are actually the same (how close are they in value)
+FHN_same_bifurcation_comparison <- pivot_longer(
+  FHN,
+  cols = c(first_hopf_bifurcation, second_bifurcation),
+  names_to = "bifurcation_type",
+  values_to = "current"
+)
+
+ggplot(FHN_same_bifurcation_comparison, aes(x = bifurcation_type, y = current, fill = bifurcation_type)) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c(
+    "first_hopf_bifurcation" = "First Hopf",
+    "second_bifurcation" = "Second"
+  )) +
+  labs(
+    title = "Same Bifurcation?",
+    x = "Bifurcation Type",
+    y = "External Current"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# Ensure all bifurcation columns have numeric values
+FHN <- FHN |>
+  mutate(across(c(first_bifurcation, second_bifurcation, third_bifurcation, fourth_bifurcation), as.numeric))
+
+# View histogram for all 4 of the bifurcations
+FHN_main_bifurcations <- pivot_longer(
+  FHN,
+  cols = c("first_bifurcation", "second_bifurcation", "third_bifurcation", "fourth_bifurcation"),
+  names_to = "bifurcation_type",
+  values_to = "current"
+)
+
+# Rename labels
+FHN_main_bifurcations$bifurcation_type <- factor(FHN_main_bifurcations$bifurcation_type,
+  levels = c("first_bifurcation", "second_bifurcation", "third_bifurcation", "fourth_bifurcation"),
+  labels = c("First", "Second", "Third", "Fourth")
+)
+
+# Plot
+ggplot(FHN_main_bifurcations, aes(x = current)) +
+  geom_histogram(bins = 28, fill = "steelblue", color = "white") +
+  labs(
+    title = "Histograms of Bifurcation External Currents",
+    x = "External Current",
+    y = "Count"
+  ) +
+  theme_bw() +
+  facet_wrap(~ bifurcation_type, scales = "free")
+```
+
+```{r}
+# Create scatter plot to view the relationship between the second bifurcation and alpha value
+ggplot(FHN, aes(x=alpha, y=second_bifurcation)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    title = "Alpha Value Vs. Second Bifurcation",
+    x = "Alpha Value",
+    y = "Bifurcation External Current"
+  ) +
+  theme_bw()
+
+# Create scatter plot to view the relationship between the second bifurcation and beta value
+ggplot(FHN, aes(x=beta, y=second_bifurcation)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    title = "Beta Value Vs. Second Bifurcation",
+    x = "Beta Value",
+    y = "Bifurcation External Current"
+  ) +
+  theme_bw()
+# The relationship appear logarithmic 
+```
+
+```{r}
+# Add a column for the log of the beta value
+FHN$log_beta<- log(FHN$beta)
+
+# Replot the scatter plot
+ggplot(FHN, aes(x=beta, y=log_beta)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Log Beta Value Vs. Second Bifurcation",
+    x = "Beta Value",
+    y = "Bifurcation External Current"
+  ) +
+  theme_bw()
+```
+
+## Data Investigation
+```{r}
+# Locate the outlier present in the second bifurcation column
+FHN |> 
+  arrange(second_bifurcation) |> 
+    slice(1)
+
+# It seems like the second bifurcation in this instance is actually the first bifurcation accidentally caught twice (-5.92 vs. -5.91), so we can remove it 
+FHN <- filter(FHN, second_bifurcation > -5)
+
+# Can rerun the exploratory plots after this edit 
+```
+
+```{r}
+# Obtain means and standard deviations of bifurcations
+FHN |> 
+  summarize(
+    mean_first = mean(first_bifurcation),
+    mean_second = mean(second_bifurcation),
+    mean_third = mean(third_bifurcation),
+    mean_fourth = mean(fourth_bifurcation, na.rm = TRUE),
+    mean_first_hopf = mean(first_hopf_bifurcation),
+    mean_second_hopf = mean(second_hopf_bifurcation),
+    sd_first = sd(first_bifurcation),
+    sd_second = sd(second_bifurcation),
+    sd_third = sd(third_bifurcation),
+    sd_fourth = sd(fourth_bifurcation, na.rm = TRUE),
+    sd_first_hopf = sd(first_hopf_bifurcation),
+    sd_second_hopf = sd(second_hopf_bifurcation)
+  )
+```
+
+## Surrogate model
+```{r}
+# Using this data, we can now fit a surrogate model to quickly obtain an estimate of where the second bifurcation occurs without having to run the Python bifurcation program (much faster)
+model <- gam(second_bifurcation ~ s(alpha) + s(beta), data = FHN)
+predict(model, newdata = data.frame(alpha = 0.65, beta = 0.85))
+```
