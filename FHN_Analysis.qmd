@@ -151,19 +151,19 @@ FHN <- filter(FHN, second_bifurcation > -5)
 ```
 
 ```{r}
-# Obtain means and standard deviations of bifurcations
+# Obtain means, medians, and standard deviations of bifurcations
+FHN_main_bifurcations |>
+  group_by(bifurcation_type) |>
+    summarize(mean = mean(current, na.rm = TRUE),
+              median = median(current, na.rm = TRUE),
+              sd = sd(current, na.rm = TRUE))
+
 FHN |> 
   summarize(
-    mean_first = mean(first_bifurcation),
-    mean_second = mean(second_bifurcation),
-    mean_third = mean(third_bifurcation),
-    mean_fourth = mean(fourth_bifurcation, na.rm = TRUE),
     mean_first_hopf = mean(first_hopf_bifurcation),
     mean_second_hopf = mean(second_hopf_bifurcation),
-    sd_first = sd(first_bifurcation),
-    sd_second = sd(second_bifurcation),
-    sd_third = sd(third_bifurcation),
-    sd_fourth = sd(fourth_bifurcation, na.rm = TRUE),
+    median_first_hopf = median(first_hopf_bifurcation),
+    median_second_hopf = median(second_hopf_bifurcation),
     sd_first_hopf = sd(first_hopf_bifurcation),
     sd_second_hopf = sd(second_hopf_bifurcation)
   )
